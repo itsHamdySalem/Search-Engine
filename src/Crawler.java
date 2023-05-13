@@ -19,8 +19,8 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentSkipListSet;
 
 public class Crawler implements Runnable {
-
-    private static final int MAX_WEB_PAGES = 30;
+    
+    private static final int MAX_WEB_PAGES = 100;
     
     private static Set<String> pagesVisited = new ConcurrentSkipListSet<>();
     private static Queue<String> pagesToVisit = new ConcurrentLinkedQueue<>();
@@ -28,20 +28,96 @@ public class Crawler implements Runnable {
     private static Object pagesVisitedLock = new Object();
     private static Object pagesToVisitLock = new Object();
 
-    public static void main(String[] args) throws IOException {
-        crawl();
-    }
-
     public Crawler() {
         // TODO: initialize Crawler
     }
 
     @Override
     public void run() {
-        // TODO: implement run method
+        System.out.println(Thread.currentThread().getName() + " has started..");
+        while (true) {
+            synchronized (pagesVisitedLock) {
+                if (pagesVisited.size() >= MAX_WEB_PAGES) {
+                    break;
+                }
+            }
+
+            String url;
+            synchronized (pagesToVisitLock) {
+                url = pagesToVisit.poll();
+            }
+
+            try {
+                // Validate the URL
+                if (!isValid(url)) {
+                    System.out.println(Thread.currentThread().getName() + ":");
+                    System.out.println("Invalid URL: " + url);
+                    continue;
+                }
+
+                // Skip URLs starting with 'javascript:'
+                if (url.startsWith("javascript:")) {
+                    System.out.println(Thread.currentThread().getName() + ":");
+                    System.out.println("Skipping JavaScript URL: " + url);
+                    continue;
+                }
+
+                // Normalize the URL
+                URI uri = new URI(url);
+                String normalizedUrl = uri.normalize().toString();
+
+                // Connect to the URL
+                Connection con = Jsoup.connect(normalizedUrl);
+                Document doc = con.get();
+                if (con.response().statusCode() == 200) { // 200 is the HTTP OK status code
+                    synchronized (pagesVisitedLock) {
+                        if (pagesVisited.size() >= MAX_WEB_PAGES) {
+                            break;
+                        }
+
+                        pagesVisited.add(normalizedUrl);
+                        System.out.println(Thread.currentThread().getName() + ":");
+                        System.out.println("Link: " + normalizedUrl);
+                        System.out.println(doc.title());
+
+                        if (pagesVisited.size() >= MAX_WEB_PAGES) {
+                            break;
+                        }
+                    }
+
+                    for (Element link : doc.select("a[href]")) {
+                        String nextUrl = link.attr("abs:href");
+
+                        try {
+                            // Normalize the next URL
+                            URI nextUri = new URI(nextUrl);
+                            String normalizedNextUrl = nextUri.normalize().toString();
+
+                            // Add the next URL to the queue
+                            synchronized (pagesVisitedLock) {
+                                if (pagesVisited.contains(normalizedNextUrl)) {
+                                    continue;
+                                }
+
+                                synchronized (pagesToVisitLock) {
+                                    pagesToVisit.add(normalizedNextUrl);
+                                }
+                            }
+                        } catch (URISyntaxException e) {
+                            System.out.println(Thread.currentThread().getName() + ":");
+                            System.out.println("Invalid URL: " + nextUrl);
+                        }
+                    }
+                }
+            } catch (IOException | URISyntaxException e) {
+                System.out.println(Thread.currentThread().getName() + ":");
+                System.out.println("Error: " + e.getMessage());
+            }
+        }
+        System.out.println(Thread.currentThread().getName() + " has finished..");
     }
 
-    public static void crawl() {
+    public void crawl() {
         if (pagesToVisit.isEmpty()) {
             getPagesToVisit();
         }
@@ -51,8 +127,10 @@ public class Crawler implements Runnable {
             int numThreads = scanner.nextInt();
             Thread[] crawlingThread = new Thread[numThreads];
 
+            // Crawler crawler = new Crawler();
             for (int i = 0; i < numThreads; i++) {
-                crawlingThread[i] = new Thread(new ThreadedCrawler());
+                // crawlingThread[i] = new Thread(crawler);
+                crawlingThread[i] = new Thread(this);
                 crawlingThread[i].setName("Thread " + i);
                 crawlingThread[i].start();
             }
@@ -110,112 +188,13 @@ public class Crawler implements Runnable {
         }
     }
 
-    private static class ThreadedCrawler implements Runnable {
-
-        public ThreadedCrawler() {
-            // TODO: initialize ThreadedCrawler
-        }
-
-        @Override
-        public void run() {
-            System.out.println(Thread.currentThread().getName() + " has started..");
-            this.crawl();
-            System.out.println(Thread.currentThread().getName() + " has finished..");
-        }
-
-        private void crawl() {
-            while (true) {
-                synchronized (pagesVisitedLock) {
-                    if (pagesVisited.size() >= MAX_WEB_PAGES) {
-                        return;
-                    }
-                }
-            
-                String url;
-                synchronized (pagesToVisitLock) {
-                    url = pagesToVisit.poll();
-                }
-            
-                try {
-                    // Validate the URL
-                    if (!isValid(url)) {
-                        System.out.println(Thread.currentThread().getName() + ":");
-                        System.out.println("Invalid URL: " + url);
-                        continue;
-                    }
-            
-                    // Skip URLs starting with 'javascript:'
-                    if (url.startsWith("javascript:")) {
-                        System.out.println(Thread.currentThread().getName() + ":");
-                        System.out.println("Skipping JavaScript URL: " + url);
-                        continue;
-                    }
-            
-                    // Normalize the URL
-                    URI uri = new URI(url);
-                    String normalizedUrl = uri.normalize().toString();
-            
-                    // Connect to the URL
-                    Connection con = Jsoup.connect(normalizedUrl);
-                    Document doc = con.get();
-                    if (con.response().statusCode() == 200) { // 200 is the HTTP OK status code
-                        synchronized (pagesVisitedLock) {
-                            if (pagesVisited.size() >= MAX_WEB_PAGES) {
-                                return;
-                            }
-                            
-                            pagesVisited.add(normalizedUrl);
-                            System.out.println(Thread.currentThread().getName() + ":");
-                            System.out.println("Link: " + normalizedUrl);
-                            System.out.println(doc.title());
-                            
-                            if (pagesVisited.size() >= MAX_WEB_PAGES) {
-                                return;
-                            }
-                        }
-                        
-                        for (Element link : doc.select("a[href]")) {
-                            String nextUrl = link.attr("abs:href");
-                            
-                            try {
-                                // Normalize the next URL
-                                URI nextUri = new URI(nextUrl);
-                                String normalizedNextUrl = nextUri.normalize().toString();
-                            
-                                // Add the next URL to the queue
-                                synchronized (pagesVisitedLock) {
-                                    if (pagesVisited.contains(normalizedNextUrl)) {
-                                        continue;
-                                    }
-                            
-                                    synchronized (pagesToVisitLock) {
-                                        pagesToVisit.add(normalizedNextUrl);
-                                    }
-                                }
-                            } catch (URISyntaxException e) {
-                                System.out.println(Thread.currentThread().getName() + ":");
-                                System.out.println("Invalid URL: " + nextUrl);
-                            }
-                        }
-                    }
-                } catch (IOException | URISyntaxException e) {
-                    System.out.println(Thread.currentThread().getName() + ":");
-                    System.out.println("Error: " + e.getMessage());
-                }
-            }
-        }
-
-        private static boolean isValid(String url) {
-            try {
-                new URI(url);
-                return true;
-            } catch (URISyntaxException e) {
-                return false;
-            }
+    private static boolean isValid(String url) {
+        try {
+            new URI(url);
+            return true;
+        } catch (URISyntaxException e) {
+            return false;
         }
     }
 
 }
-
-
-
