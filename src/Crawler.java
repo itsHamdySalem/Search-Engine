@@ -19,7 +19,7 @@ import java.util.concurrent.ConcurrentSkipListSet;
 
 public class Crawler implements Runnable {
 
-    private static final int MAX_WEB_PAGES = 100;
+    private static final int MAX_WEB_PAGES = 30;
     private static volatile int crawledPages;
 
     private static Set<String> pagesVisited = new ConcurrentSkipListSet<>();
@@ -27,6 +27,7 @@ public class Crawler implements Runnable {
 
     private static Object pagesVisitedLock = new Object();
     private static Object pagesToVisitLock = new Object();
+    private static Object crawledPagesLock = new Object();
 
     public static void main(String[] args) throws IOException {
         crawl();
@@ -67,6 +68,7 @@ public class Crawler implements Runnable {
             }
         }
 
+        System.out.println("crawledPages = " + crawledPages);
         System.out.println("pagesVisited = " + pagesVisited.size());
         for (String url : pagesVisited) {
             System.out.println(url);
@@ -113,18 +115,20 @@ public class Crawler implements Runnable {
         @Override
         public void run() {
             System.out.println(Thread.currentThread().getName() + " has started..");
-            crawl();
+            this.crawl();
             System.out.println(Thread.currentThread().getName() + " has finished..");
         }
 
         private void crawl() {
             while (true) {
-                if (crawledPages >= MAX_WEB_PAGES) {
-                    return;
+                synchronized (crawledPagesLock) {
+                    if (crawledPages >= MAX_WEB_PAGES) {
+                        return;
+                    }
                 }
-                String url = pagesToVisit.poll();
-                if (url == null) {
-                    return;
+                String url;
+                synchronized (pagesToVisitLock) {
+                    url = pagesToVisit.poll();
                 }
                 try {
                     // Validate the URL
@@ -146,21 +150,24 @@ public class Crawler implements Runnable {
                     Connection con = Jsoup.connect(normalizedUrl);
                     Document doc = con.get();
                     if (con.response().statusCode() == 200) { // 200 is the HTTP OK status code
-                        System.out.println(Thread.currentThread().getName() + ":");
-                        System.out.println("Link: " + normalizedUrl);
-                        System.out.println(doc.title());
-
+                        
                         synchronized (pagesVisitedLock) {
-                            pagesVisited.add(normalizedUrl);
-                        }
-
-                        synchronized (this) {
-                            crawledPages++;
-                            if (crawledPages >= MAX_WEB_PAGES) {
-                                System.out.println(Thread.currentThread().getName() + " has finished..");
-                                return;
+                            synchronized (crawledPagesLock) {
+                                if (crawledPages >= MAX_WEB_PAGES) {
+                                    return;
+                                }
+                                crawledPages++;
+                                pagesVisited.add(normalizedUrl);
+                                // System.out.println("pagedVisited = " + pagesVisited.size() + " ,crawledPages = " + crawledPages);
+                                System.out.println(Thread.currentThread().getName() + ":");
+                                System.out.println("Link: " + normalizedUrl);
+                                System.out.println(doc.title());
+                                if (crawledPages >= MAX_WEB_PAGES) {
+                                    return;
+                                }
                             }
                         }
+
                         for (Element link : doc.select("a[href]")) {
                             String nextUrl = link.attr("abs:href");
                             try {
@@ -172,9 +179,9 @@ public class Crawler implements Runnable {
                                     if (pagesVisited.contains(normalizedNextUrl)) {
                                         continue;
                                     }
-                                }
-                                synchronized (pagesToVisitLock) {
-                                    pagesToVisit.add(normalizedNextUrl);
+                                    synchronized (pagesToVisitLock) {
+                                        pagesToVisit.add(normalizedNextUrl);
+                                    }
                                 }
                             } catch (URISyntaxException e) {
                                 System.out.println(Thread.currentThread().getName() + ":");
@@ -200,5 +207,3 @@ public class Crawler implements Runnable {
     }
 
 }
-
-
