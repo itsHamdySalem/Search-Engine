@@ -78,7 +78,7 @@ public class Crawler implements Runnable {
 
     private static void getPagesToVisit() {
         try {
-            File file = new File("seed.txt");
+            File file = new File("src/seed.txt");
             Scanner scanner = new Scanner(file);
             
             while (scanner.hasNextLine()) {
