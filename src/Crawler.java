@@ -27,9 +27,12 @@ public class Crawler implements Runnable {
 
     private static Object pagesVisitedLock = new Object();
     private static Object pagesToVisitLock = new Object();
+    MongoDB mongoDBClient;
 
     public Crawler() {
         // TODO: initialize Crawler
+        mongoDBClient = new MongoDB();
+        mongoDBClient.connectToDatabase();
     }
 
     @Override
