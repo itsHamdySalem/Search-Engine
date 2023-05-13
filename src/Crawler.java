@@ -1,90 +1,96 @@
-import org.jsoup.Jsoup;
 import org.jsoup.Connection;
-import org.jsoup.nodes.Element;
+import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.FileNotFoundException;
 
-import java.util.Set;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ConcurrentSkipListSet;
-import java.util.Queue;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Scanner;
-import java.util.ArrayList;
-import java.util.LinkedList;
-
 import java.net.URI;
 import java.net.URISyntaxException;
 
-import javax.print.Doc;
+import java.util.Set;
+import java.util.Queue;
+import java.util.Scanner;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ConcurrentSkipListSet;
 
 public class Crawler implements Runnable {
 
-    private static final int MAX_WEB_PAGES = 24;
-    private static int crawledPages = 0;
-    
+    private static final int MAX_WEB_PAGES = 30;
+    private static volatile int crawledPages;
+
     private static Set<String> pagesVisited = new ConcurrentSkipListSet<>();
     private static Queue<String> pagesToVisit = new ConcurrentLinkedQueue<>();
-    
-    // TODO: store in pagesPopularity the popularity of web pages 
-    // private HashMap<String, int> pagesPopularity = new HashMap<String, int>();
 
-    // TODO: implement MonogDB class and RobotCheck class to use here
-    // private MongoDB database = new MongoDB();
-    // private RobotCheck robot_object = new RobotCheck();
+    private static Object pagesVisitedLock = new Object();
+    private static Object pagesToVisitLock = new Object();
+    private static Object crawledPagesLock = new Object();
 
     public static void main(String[] args) throws IOException {
         crawl();
-        System.out.println("pagesvisited = " + pagesVisited.size());
-        for (String url : pagesVisited) {
-            System.out.println(url);
-        }
     }
 
-    public Crawler () {
-        // TODO: initialize Crawler variables
-        // database.connect();
+    public Crawler() {
+        // TODO: initialize Crawler
     }
 
     @Override
-    public void run () {
+    public void run() {
         // TODO: implement run method
     }
 
-    private static void crawl() {
-        if (crawledPages >= MAX_WEB_PAGES) return;
-        if (crawledPages == 0 && pagesToVisit.isEmpty()) getPagesToVisit();
-        
-        int currentThread = 0;
-        int numThreads = pagesToVisit.size();
-        int numPagesPerThread = MAX_WEB_PAGES / numThreads;
-        Thread[] crawlingThread = new Thread [numThreads];
-        
-        while (!pagesToVisit.isEmpty()) {
-            crawlingThread[currentThread] = new Thread (new threadedCrawler(pagesToVisit.poll(), numPagesPerThread));
-            crawlingThread[currentThread].setName("Thread " + currentThread);
-            currentThread++;
-        }
-        
-        for (int i = 0; i < numThreads; i++) {
-            crawlingThread[i].start();
+    public static void crawl() {
+        if (crawledPages >= MAX_WEB_PAGES)
+            return;
+        if (crawledPages == 0 && pagesToVisit.isEmpty())
+            getPagesToVisit();
+
+        try (Scanner scanner = new Scanner(System.in)) {
+            System.out.print("Enter number of threads: ");
+            int numThreads = scanner.nextInt();
+            Thread[] crawlingThread = new Thread[numThreads];
+
+            for (int i = 0; i < numThreads; i++) {
+                crawlingThread[i] = new Thread(new ThreadedCrawler());
+                crawlingThread[i].setName("Thread " + i);
+                crawlingThread[i].start();
+            }
+
+            for (int i = 0; i < numThreads; i++) {
+                try {
+                    crawlingThread[i].join();
+                } catch (InterruptedException e) {
+                    System.out.println("Error: " + e.getMessage());
+                }
+            }
         }
 
-        for (int i = 0; i < numThreads; i++) {
-            try {
-                crawlingThread[i].join();
-            } catch (InterruptedException e) {
-                System.out.println("Error: " + e.getMessage());
+        System.out.println("crawledPages = " + crawledPages);
+        System.out.println("pagesVisited = " + pagesVisited.size());
+        for (String url : pagesVisited) {
+            System.out.println(url);
+        }
+        System.exit(0);
+    }
+
+    private static void getPagesToVisit() {
+        try {
+            File file = new File("seed.txt");
+            Scanner scanner = new Scanner(file);
+            while (scanner.hasNextLine()) {
+                String url = scanner.nextLine();
+                pagesToVisit.add(url);
             }
+            scanner.close();
+        } catch (FileNotFoundException e) {
+            System.out.println("Error: " + e.getMessage());
         }
     }
 
-    private void get_html_content (Document doc, String url) {
+    private void get_html_content(Document doc, String url) {
         final String path = "downloadedPages/";
         String fileName = url.substring(url.lastIndexOf('/') + 1);
         try {
@@ -100,45 +106,30 @@ public class Crawler implements Runnable {
         }
     }
 
-    private static void getPagesToVisit() {
-        pagesToVisit = new ConcurrentLinkedQueue<>();
-        try {
-            File file = new File("seed.txt");
-            Scanner scanner = new Scanner(file);
-            while (scanner.hasNextLine()) {
-                String url = scanner.nextLine();
-                pagesToVisit.add(url);
-            }
-            scanner.close();
-        } catch (FileNotFoundException e) {
-            System.out.println("Error: " + e.getMessage());
-        }
-    }
+    private static class ThreadedCrawler implements Runnable {
 
-    private static class threadedCrawler implements Runnable {
-        
-        private Queue<String> pagesToVisit = new ConcurrentLinkedQueue<>();
-        private int crawledPages;
-        private int maxPages;
-        private static Object lock = new Object();
-
-        public threadedCrawler(String seed, int maxPages) {
-            this.pagesToVisit.add(seed);
-            this.maxPages = maxPages;
-            this.crawledPages = 0;
+        public ThreadedCrawler() {
+            // TODO: initialize ThreadedCrawler
         }
 
         @Override
         public void run() {
-            crawl();
+            System.out.println(Thread.currentThread().getName() + " has started..");
+            this.crawl();
+            System.out.println(Thread.currentThread().getName() + " has finished..");
         }
 
         private void crawl() {
-            while (!this.pagesToVisit.isEmpty() && this.crawledPages < maxPages) {
+            while (true) {
+                synchronized (crawledPagesLock) {
+                    if (crawledPages >= MAX_WEB_PAGES) {
+                        return;
+                    }
+                }
                 String url;
-                // synchronized (lock) {
-                    url = this.pagesToVisit.poll();
-                // }
+                synchronized (pagesToVisitLock) {
+                    url = pagesToVisit.poll();
+                }
                 try {
                     // Validate the URL
                     if (!isValid(url)) {
@@ -159,16 +150,24 @@ public class Crawler implements Runnable {
                     Connection con = Jsoup.connect(normalizedUrl);
                     Document doc = con.get();
                     if (con.response().statusCode() == 200) { // 200 is the HTTP OK status code
-                        System.out.println(Thread.currentThread().getName() + ":");
-                        System.out.println("Link: " + normalizedUrl);
-                        System.out.println(doc.title());
-                        synchronized (lock) {
-                            pagesVisited.add(normalizedUrl);
+                        
+                        synchronized (pagesVisitedLock) {
+                            synchronized (crawledPagesLock) {
+                                if (crawledPages >= MAX_WEB_PAGES) {
+                                    return;
+                                }
+                                crawledPages++;
+                                pagesVisited.add(normalizedUrl);
+                                // System.out.println("pagedVisited = " + pagesVisited.size() + " ,crawledPages = " + crawledPages);
+                                System.out.println(Thread.currentThread().getName() + ":");
+                                System.out.println("Link: " + normalizedUrl);
+                                System.out.println(doc.title());
+                                if (crawledPages >= MAX_WEB_PAGES) {
+                                    return;
+                                }
+                            }
                         }
-                        this.crawledPages++;
-                        if (this.crawledPages >= maxPages) {
-                            return;
-                        }
+
                         for (Element link : doc.select("a[href]")) {
                             String nextUrl = link.attr("abs:href");
                             try {
@@ -176,9 +175,12 @@ public class Crawler implements Runnable {
                                 URI nextUri = new URI(nextUrl);
                                 String normalizedNextUrl = nextUri.normalize().toString();
                                 // Add the next URL to the queue
-                                synchronized (lock) {
-                                    if (!pagesVisited.contains(normalizedNextUrl)) {
-                                        this.pagesToVisit.add(normalizedNextUrl);
+                                synchronized (pagesVisitedLock) {
+                                    if (pagesVisited.contains(normalizedNextUrl)) {
+                                        continue;
+                                    }
+                                    synchronized (pagesToVisitLock) {
+                                        pagesToVisit.add(normalizedNextUrl);
                                     }
                                 }
                             } catch (URISyntaxException e) {
@@ -205,4 +207,3 @@ public class Crawler implements Runnable {
     }
 
 }
-
