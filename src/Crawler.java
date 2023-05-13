@@ -1,7 +1,8 @@
-import org.jsoup.Connection;
+
 import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
+import org.jsoup.Connection;
 import org.jsoup.nodes.Element;
+import org.jsoup.nodes.Document;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -20,14 +21,12 @@ import java.util.concurrent.ConcurrentSkipListSet;
 public class Crawler implements Runnable {
 
     private static final int MAX_WEB_PAGES = 30;
-    private static volatile int crawledPages;
-
+    
     private static Set<String> pagesVisited = new ConcurrentSkipListSet<>();
     private static Queue<String> pagesToVisit = new ConcurrentLinkedQueue<>();
 
     private static Object pagesVisitedLock = new Object();
     private static Object pagesToVisitLock = new Object();
-    private static Object crawledPagesLock = new Object();
 
     public static void main(String[] args) throws IOException {
         crawl();
@@ -43,10 +42,9 @@ public class Crawler implements Runnable {
     }
 
     public static void crawl() {
-        if (crawledPages >= MAX_WEB_PAGES)
-            return;
-        if (crawledPages == 0 && pagesToVisit.isEmpty())
+        if (pagesToVisit.isEmpty()) {
             getPagesToVisit();
+        }
 
         try (Scanner scanner = new Scanner(System.in)) {
             System.out.print("Enter number of threads: ");
@@ -66,13 +64,15 @@ public class Crawler implements Runnable {
                     System.out.println("Error: " + e.getMessage());
                 }
             }
+        } catch (Exception e) {
+            System.out.println("Error: " + e.getMessage());
         }
 
-        System.out.println("crawledPages = " + crawledPages);
         System.out.println("pagesVisited = " + pagesVisited.size());
         for (String url : pagesVisited) {
             System.out.println(url);
         }
+        
         System.exit(0);
     }
 
@@ -80,10 +80,12 @@ public class Crawler implements Runnable {
         try {
             File file = new File("seed.txt");
             Scanner scanner = new Scanner(file);
+            
             while (scanner.hasNextLine()) {
                 String url = scanner.nextLine();
                 pagesToVisit.add(url);
             }
+            
             scanner.close();
         } catch (FileNotFoundException e) {
             System.out.println("Error: " + e.getMessage());
@@ -93,11 +95,13 @@ public class Crawler implements Runnable {
     private void get_html_content(Document doc, String url) {
         final String path = "downloadedPages/";
         String fileName = url.substring(url.lastIndexOf('/') + 1);
+        
         try {
             File file = new File(path + fileName);
             if (!file.exists()) {
                 file.createNewFile();
             }
+        
             FileWriter writer = new FileWriter(file);
             writer.write(doc.html());
             writer.close();
@@ -121,15 +125,17 @@ public class Crawler implements Runnable {
 
         private void crawl() {
             while (true) {
-                synchronized (crawledPagesLock) {
-                    if (crawledPages >= MAX_WEB_PAGES) {
+                synchronized (pagesVisitedLock) {
+                    if (pagesVisited.size() >= MAX_WEB_PAGES) {
                         return;
                     }
                 }
+            
                 String url;
                 synchronized (pagesToVisitLock) {
                     url = pagesToVisit.poll();
                 }
+            
                 try {
                     // Validate the URL
                     if (!isValid(url)) {
@@ -137,48 +143,51 @@ public class Crawler implements Runnable {
                         System.out.println("Invalid URL: " + url);
                         continue;
                     }
+            
                     // Skip URLs starting with 'javascript:'
                     if (url.startsWith("javascript:")) {
                         System.out.println(Thread.currentThread().getName() + ":");
                         System.out.println("Skipping JavaScript URL: " + url);
                         continue;
                     }
+            
                     // Normalize the URL
                     URI uri = new URI(url);
                     String normalizedUrl = uri.normalize().toString();
+            
                     // Connect to the URL
                     Connection con = Jsoup.connect(normalizedUrl);
                     Document doc = con.get();
                     if (con.response().statusCode() == 200) { // 200 is the HTTP OK status code
-                        
                         synchronized (pagesVisitedLock) {
-                            synchronized (crawledPagesLock) {
-                                if (crawledPages >= MAX_WEB_PAGES) {
-                                    return;
-                                }
-                                crawledPages++;
-                                pagesVisited.add(normalizedUrl);
-                                // System.out.println("pagedVisited = " + pagesVisited.size() + " ,crawledPages = " + crawledPages);
-                                System.out.println(Thread.currentThread().getName() + ":");
-                                System.out.println("Link: " + normalizedUrl);
-                                System.out.println(doc.title());
-                                if (crawledPages >= MAX_WEB_PAGES) {
-                                    return;
-                                }
+                            if (pagesVisited.size() >= MAX_WEB_PAGES) {
+                                return;
+                            }
+                            
+                            pagesVisited.add(normalizedUrl);
+                            System.out.println(Thread.currentThread().getName() + ":");
+                            System.out.println("Link: " + normalizedUrl);
+                            System.out.println(doc.title());
+                            
+                            if (pagesVisited.size() >= MAX_WEB_PAGES) {
+                                return;
                             }
                         }
-
+                        
                         for (Element link : doc.select("a[href]")) {
                             String nextUrl = link.attr("abs:href");
+                            
                             try {
                                 // Normalize the next URL
                                 URI nextUri = new URI(nextUrl);
                                 String normalizedNextUrl = nextUri.normalize().toString();
+                            
                                 // Add the next URL to the queue
                                 synchronized (pagesVisitedLock) {
                                     if (pagesVisited.contains(normalizedNextUrl)) {
                                         continue;
                                     }
+                            
                                     synchronized (pagesToVisitLock) {
                                         pagesToVisit.add(normalizedNextUrl);
                                     }
@@ -207,3 +216,6 @@ public class Crawler implements Runnable {
     }
 
 }
+
+
+
