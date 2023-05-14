@@ -11,13 +11,12 @@ crawler: build-crawler run-crawler
 
 # Indexer module
 build-indexer:
-	javac ./Indexer.java
+	javac -cp ./src/jsoup-1.16.1.jar;./src/mongo-java-driver-3.12.10.jar ./src/Indexer.java
 
 run-indexer:
-	java ./Indexer.class
+	java -cp "./src/jsoup-1.16.1.jar;./src/mongo-java-driver-3.12.10.jar;./src" Indexer
 
-indexer:
-	build-indexer run-indexer
+indexer: build-indexer run-indexer
 
 # MongoDB module
 build-mongodb:
