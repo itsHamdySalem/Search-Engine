@@ -19,10 +19,9 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentSkipListSet;
 
 public class Crawler implements Runnable {
-    
-    private int numVisitedPages;
-    private static final int MAX_WEB_PAGES = 10;
-    
+
+    private static final int MAX_WEB_PAGES = 100;
+
     private static Set<String> pagesVisited = new ConcurrentSkipListSet<>();
     private static Queue<String> pagesToVisit = new ConcurrentLinkedQueue<>();
 
@@ -83,7 +82,6 @@ public class Crawler implements Runnable {
 
                         pagesVisited.add(normalizedUrl);
                         mongoDBClient.updatePagesVisited(normalizedUrl);
-                        mongoDBClient.updateNumPagesVisited(pagesVisited.size());
 
                         synchronized (getContentLock) {
                             getPageContent(doc, normalizedUrl);
@@ -133,7 +131,7 @@ public class Crawler implements Runnable {
 
     public void crawl() {
         if (mongoDBClient.getState().equals("crawling")) {
-            numVisitedPages = mongoDBClient.getPagesVisited(pagesToVisit, pagesVisited);
+            mongoDBClient.getPagesVisited(pagesToVisit, pagesVisited);
         }
 
         if (pagesToVisit.isEmpty()) {
@@ -217,3 +215,7 @@ public class Crawler implements Runnable {
     }
 
 }
+
+
+
+

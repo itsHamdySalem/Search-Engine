@@ -35,7 +35,7 @@ public class MongoDB {
             Document stateDocument = crawlerCollection.find(eq("_id", 1)).first();
             if (stateDocument == null) {
                 Document newStateDocument = new Document("_id", 1)
-                        .append("state", "idle").append("numVisitedPages", 0.0);
+                        .append("state", "idle");
                 crawlerCollection.insertOne(newStateDocument);
             }
         } catch (Exception e) {
@@ -57,20 +57,13 @@ public class MongoDB {
         if (state.equals("idle")) {
             // Reset the crawler state
             filter = eq("_id", 1);
-            updateState = set("numVisitedPages", 0.0);
             crawlerCollection.updateOne(filter, updateState);
             filter = ne("_id", 1.0);
             crawlerCollection.deleteMany(filter);
         }
     }
 
-    public int getNumPagesVisited () {
-        Document stateDocument = crawlerCollection.find(eq("_id", 1)).first();
-        Object numVisitedPages = stateDocument.get("numVisitedPages");
-        return (int) Double.parseDouble(numVisitedPages.toString());
-    }
-
-    public int getPagesVisited (Queue<String> pagesToVisit, Set<String> pagesVisited) {
+    public void getPagesVisited (Queue<String> pagesToVisit, Set<String> pagesVisited) {
         List<Document> pagesList = crawlerCollection.find().into(new ArrayList<Document>());
         for (Document url: pagesList) {
             if (url.get("_id").toString().equals("1.0")) {
@@ -79,7 +72,6 @@ public class MongoDB {
             if (url.get("toVisit") != null) pagesToVisit.add(url.get("toVisit").toString());
             else if (url.get("visited") != null) pagesVisited.add(url.get("visited").toString());
         }
-        return getNumPagesVisited();
     }
 
     public void updatePagesToVisit (String url) {
@@ -99,10 +91,8 @@ public class MongoDB {
         crawlerCollection.insertOne(newUrl);
     }
 
-    public void updateNumPagesVisited (int numPagesVisited) {
-        Bson filter = eq("_id", 1);
-        Bson updateNumPagesVisited = set("numVisitedPages", numPagesVisited);
-        crawlerCollection.updateOne(filter, updateNumPagesVisited);
-    }
-
 }
+
+
+
+
