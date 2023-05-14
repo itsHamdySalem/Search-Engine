@@ -15,24 +15,26 @@ import java.net.URISyntaxException;
 import java.util.Set;
 import java.util.Queue;
 import java.util.Scanner;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentSkipListSet;
 
 public class Crawler implements Runnable {
 
-    private static final int MAX_WEB_PAGES = 10;
+    private final int MAX_WEB_PAGES = 100;
 
-    private static Set<String> pagesVisited = new ConcurrentSkipListSet<>();
-    private static Queue<String> pagesToVisit = new ConcurrentLinkedQueue<>();
+    private Set<String> pagesVisited = new ConcurrentSkipListSet<>();
+    private Queue<String> pagesToVisit = new ConcurrentLinkedQueue<>();
 
-    private static Object getContentLock = new Object();
-    private static Object pagesVisitedLock = new Object();
-    private static Object pagesToVisitLock = new Object();
+    private Object getContentLock = new Object();
+    private Object pagesVisitedLock = new Object();
+    private Object pagesToVisitLock = new Object();
     
-    MongoDB mongoDBClient;
+    MongoDB mongoDBClient = new MongoDB();
+    RobotObject robotObject = new RobotObject();
 
     public Crawler() {
-        mongoDBClient = new MongoDB();
         mongoDBClient.connectToDatabase();
     }
 
@@ -75,6 +77,13 @@ public class Crawler implements Runnable {
                 Connection con = Jsoup.connect(normalizedUrl);
                 Document doc = con.get();
                 if (con.response().statusCode() == 200) { // 200 is the HTTP OK status code
+                    // Check if the URL is allowed to be crawled
+                    if (!robotObject.isURLAllowed(normalizedUrl)) {
+                        System.out.println(Thread.currentThread().getName() + ":");
+                        System.out.println("URL is not allowed: " + normalizedUrl);
+                        continue;
+                    }
+                    
                     synchronized (pagesVisitedLock) {
                         if (pagesVisited.size() >= MAX_WEB_PAGES) {
                             break;
@@ -123,7 +132,8 @@ public class Crawler implements Runnable {
                 }
             } catch (IOException | URISyntaxException e) {
                 System.out.println(Thread.currentThread().getName() + ":");
-                System.out.println("Error: " + e.getMessage());
+                System.out.println("Error while crawling URL: " + url);
+                System.out.println("Error message: " + e.getMessage());
             }
         }
         System.out.println(Thread.currentThread().getName() + " has finished..");
@@ -135,7 +145,7 @@ public class Crawler implements Runnable {
         }
 
         if (pagesToVisit.isEmpty()) {
-            getPagesToVisit();
+            getSeed();
         }
 
         mongoDBClient.setState("crawling");
@@ -143,20 +153,16 @@ public class Crawler implements Runnable {
         try (Scanner scanner = new Scanner(System.in)) {
             System.out.print("Enter number of threads: ");
             int numThreads = scanner.nextInt();
-            Thread[] crawlingThread = new Thread[numThreads];
-
+            
+            ExecutorService executor = Executors.newFixedThreadPool(numThreads);
+            
             for (int i = 0; i < numThreads; i++) {
-                crawlingThread[i] = new Thread(this);
-                crawlingThread[i].setName("Thread " + i);
-                crawlingThread[i].start();
+                executor.execute(this);
             }
-
-            for (int i = 0; i < numThreads; i++) {
-                try {
-                    crawlingThread[i].join();
-                } catch (InterruptedException e) {
-                    System.out.println("Error: " + e.getMessage());
-                }
+            executor.shutdown();
+            
+            while (!executor.isTerminated()) {
+                // Wait for all threads to finish
             }
         } catch (Exception e) {
             System.out.println("Error: " + e.getMessage());
@@ -164,11 +170,11 @@ public class Crawler implements Runnable {
 
         mongoDBClient.setState("idle");
 
-        System.out.println("overall pages visited = " + pagesVisited.size());
-        System.out.println("crawling finished..");
+        System.out.println("Overall pages visited = " + pagesVisited.size());
+        System.out.println("Crawling finished..");
     }
 
-    private static void getPagesToVisit() {
+    private void getSeed() {
         try {
             File file = new File("src/seed.txt");
             Scanner scanner = new Scanner(file);
@@ -180,7 +186,7 @@ public class Crawler implements Runnable {
             
             scanner.close();
         } catch (FileNotFoundException e) {
-            System.out.println("Error: " + e.getMessage());
+            System.out.println("Error while reading seed file: " + e.getMessage());
         }
     }
 
@@ -205,7 +211,7 @@ public class Crawler implements Runnable {
         }
     }
 
-    private static boolean isValid(String url) {
+    private boolean isValid(String url) {
         try {
             new URI(url);
             return true;
@@ -215,7 +221,4 @@ public class Crawler implements Runnable {
     }
 
 }
-
-
-
 
