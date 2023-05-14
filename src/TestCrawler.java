@@ -1,6 +1,7 @@
 
 public class TestCrawler {
     public static void main(String[] args) {
-        (new Crawler()).crawl();
+        Crawler crawler = new Crawler();
+        crawler.crawl();
     }
 }

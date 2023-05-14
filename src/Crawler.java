@@ -20,17 +20,18 @@ import java.util.concurrent.ConcurrentSkipListSet;
 
 public class Crawler implements Runnable {
     
-    private static final int MAX_WEB_PAGES = 100;
+    private static final int MAX_WEB_PAGES = 10;
     
     private static Set<String> pagesVisited = new ConcurrentSkipListSet<>();
     private static Queue<String> pagesToVisit = new ConcurrentLinkedQueue<>();
 
+    private static Object getContentLock = new Object();
     private static Object pagesVisitedLock = new Object();
     private static Object pagesToVisitLock = new Object();
+    
     MongoDB mongoDBClient;
 
     public Crawler() {
-        // TODO: initialize Crawler
         mongoDBClient = new MongoDB();
         mongoDBClient.connectToDatabase();
     }
@@ -79,10 +80,14 @@ public class Crawler implements Runnable {
                         }
 
                         pagesVisited.add(normalizedUrl);
+                        synchronized (getContentLock) {
+                            getPageContent(doc, normalizedUrl);
+                        }
+                        
                         System.out.println(Thread.currentThread().getName() + ":");
                         System.out.println("Link: " + normalizedUrl);
-                        System.out.println(doc.title());
-
+                        System.out.println("Title: " + doc.title());
+                        
                         if (pagesVisited.size() >= MAX_WEB_PAGES) {
                             break;
                         }
@@ -130,9 +135,7 @@ public class Crawler implements Runnable {
             int numThreads = scanner.nextInt();
             Thread[] crawlingThread = new Thread[numThreads];
 
-            // Crawler crawler = new Crawler();
             for (int i = 0; i < numThreads; i++) {
-                // crawlingThread[i] = new Thread(crawler);
                 crawlingThread[i] = new Thread(this);
                 crawlingThread[i].setName("Thread " + i);
                 crawlingThread[i].start();
@@ -149,12 +152,8 @@ public class Crawler implements Runnable {
             System.out.println("Error: " + e.getMessage());
         }
 
-        System.out.println("pagesVisited = " + pagesVisited.size());
-        for (String url : pagesVisited) {
-            System.out.println(url);
-        }
-        
-        System.exit(0);
+        System.out.println("crawling finished..");
+        System.out.println("overall pages visited = " + pagesVisited.size());
     }
 
     private static void getPagesToVisit() {
@@ -173,17 +172,20 @@ public class Crawler implements Runnable {
         }
     }
 
-    private void get_html_content(Document doc, String url) {
-        final String path = "downloadedPages/";
-        String fileName = url.substring(url.lastIndexOf('/') + 1);
+    private void getPageContent(Document doc, String url) {
+        final String path = "E:/CUFE/2- Junior CMP/Second Term/CMP 2050/Project/sandbox/downloadedPages/";
         
+        String fileName = url.substring(0, url.length());
+        fileName = fileName.replaceAll("[^a-zA-Z0-9\\.\\-]", "_");
+
         try {
             File file = new File(path + fileName);
             if (!file.exists()) {
                 file.createNewFile();
             }
-        
+
             FileWriter writer = new FileWriter(file);
+            writer.write(url + "\n");
             writer.write(doc.html());
             writer.close();
         } catch (IOException e) {
