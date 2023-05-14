@@ -20,6 +20,7 @@ import java.util.concurrent.ConcurrentSkipListSet;
 
 public class Crawler implements Runnable {
     
+    private int numVisitedPages;
     private static final int MAX_WEB_PAGES = 10;
     
     private static Set<String> pagesVisited = new ConcurrentSkipListSet<>();
@@ -49,6 +50,7 @@ public class Crawler implements Runnable {
             String url;
             synchronized (pagesToVisitLock) {
                 url = pagesToVisit.poll();
+                mongoDBClient.updatePagesToVisit(url);
             }
 
             try {
@@ -80,6 +82,9 @@ public class Crawler implements Runnable {
                         }
 
                         pagesVisited.add(normalizedUrl);
+                        mongoDBClient.updatePagesVisited(normalizedUrl);
+                        mongoDBClient.updateNumPagesVisited(pagesVisited.size());
+
                         synchronized (getContentLock) {
                             getPageContent(doc, normalizedUrl);
                         }
@@ -109,6 +114,7 @@ public class Crawler implements Runnable {
 
                                 synchronized (pagesToVisitLock) {
                                     pagesToVisit.add(normalizedNextUrl);
+                                    mongoDBClient.updatePagesToVisit(normalizedNextUrl);
                                 }
                             }
                         } catch (URISyntaxException e) {
@@ -126,9 +132,15 @@ public class Crawler implements Runnable {
     }
 
     public void crawl() {
+        if (mongoDBClient.getState().equals("crawling")) {
+            numVisitedPages = mongoDBClient.getPagesVisited(pagesToVisit, pagesVisited);
+        }
+
         if (pagesToVisit.isEmpty()) {
             getPagesToVisit();
         }
+
+        mongoDBClient.setState("crawling");
 
         try (Scanner scanner = new Scanner(System.in)) {
             System.out.print("Enter number of threads: ");
@@ -152,8 +164,10 @@ public class Crawler implements Runnable {
             System.out.println("Error: " + e.getMessage());
         }
 
-        System.out.println("crawling finished..");
+        mongoDBClient.setState("idle");
+
         System.out.println("overall pages visited = " + pagesVisited.size());
+        System.out.println("crawling finished..");
     }
 
     private static void getPagesToVisit() {
