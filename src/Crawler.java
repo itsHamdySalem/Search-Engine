@@ -20,7 +20,7 @@ import java.util.concurrent.ConcurrentSkipListSet;
 
 public class Crawler implements Runnable {
 
-    private static final int MAX_WEB_PAGES = 100;
+    private static final int MAX_WEB_PAGES = 10;
 
     private static Set<String> pagesVisited = new ConcurrentSkipListSet<>();
     private static Queue<String> pagesToVisit = new ConcurrentLinkedQueue<>();
@@ -49,7 +49,7 @@ public class Crawler implements Runnable {
             String url;
             synchronized (pagesToVisitLock) {
                 url = pagesToVisit.poll();
-                mongoDBClient.updatePagesToVisit(url);
+                mongoDBClient.updatePagesToVisit(url, false);
             }
 
             try {
@@ -112,7 +112,7 @@ public class Crawler implements Runnable {
 
                                 synchronized (pagesToVisitLock) {
                                     pagesToVisit.add(normalizedNextUrl);
-                                    mongoDBClient.updatePagesToVisit(normalizedNextUrl);
+                                    mongoDBClient.updatePagesToVisit(normalizedNextUrl, true);
                                 }
                             }
                         } catch (URISyntaxException e) {

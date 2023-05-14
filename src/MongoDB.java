@@ -74,9 +74,14 @@ public class MongoDB {
         }
     }
 
-    public void updatePagesToVisit (String url) {
+    public void updatePagesToVisit (String url, Boolean toInsert) {
         Bson filter = eq("toVisit", url);
-        crawlerCollection.deleteOne(filter);
+        if (toInsert) {
+            Document newUrl = new Document("toVisit", url);
+            crawlerCollection.insertOne(newUrl);
+        } else {
+            crawlerCollection.deleteOne(filter);
+        }
     }
 
     public void updatePagesToVisit (List<String> urls) {
