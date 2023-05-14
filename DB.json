@@ -1,0 +1,36 @@
+{
+  "hamdy": [
+    {
+      "ID": 0,
+      "TF_IDF": 1,
+      "freq": 1
+    },
+    {
+      "ID": 1,
+      "TF_IDF": 2,
+      "freq": 3
+    },
+    {
+      "ID": 2,
+      "TF_IDF": 0,
+      "freq": 1
+    }
+  ],
+  "sory": [
+    {
+      "ID": 0,
+      "TF_IDF": 1,
+      "freq": 1
+    },
+    {
+      "ID": 1,
+      "TF_IDF": 2,
+      "freq": 3
+    },
+    {
+      "ID": 2,
+      "TF_IDF": 1,
+      "freq": 1
+    }
+  ]
+}
