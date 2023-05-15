@@ -1,8 +1,13 @@
-
-import com.mongodb.MongoClient;
-import com.mongodb.client.MongoCursor;
-import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.MongoClients;
+import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
+import org.bson.Document;
+import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.Updates;
+import com.mongodb.client.model.FindOneAndUpdateOptions;
+import com.mongodb.client.model.ReturnDocument;
+import com.mongodb.client.result.UpdateResult;
 
 
 import static com.mongodb.client.model.Filters.*;
@@ -14,6 +19,9 @@ import org.bson.Document;
 import org.bson.conversions.Bson;
 
 
+import java.util.HashMap;
+import java.util.Map;
+
 import java.util.Set;
 import java.util.List;
 import java.util.Queue;
@@ -22,12 +30,14 @@ import java.util.ArrayList;
 
 public class MongoDB {
     private MongoCollection<Document> crawlerCollection;
+    private MongoCollection<Document> indexerCollection;
 
     public void connectToDatabase() {
         try {
-            MongoClient mongoClient = new MongoClient();
+            MongoClient mongoClient = MongoClients.create("mongodb://localhost:27017");
             MongoDatabase db = mongoClient.getDatabase("SearchEngine");
             crawlerCollection = db.getCollection("crawler");
+            indexerCollection = db.getCollection("indexer");
 
             System.out.println("Connected to the database");
 
@@ -95,5 +105,70 @@ public class MongoDB {
         Document newUrl = new Document("visited", url);
         crawlerCollection.insertOne(newUrl);
     }
+
+    public void uploadIndexer(Map<String, Map<String, Double>> invertedIndex) {
+        for (Map.Entry<String, Map<String, Double>> entry : invertedIndex.entrySet()) {
+            String word = entry.getKey();
+            Map<String, Double> documentScores = entry.getValue();
+
+            // Check if the word already exists in the collection
+            Document existingDoc = indexerCollection.find(Filters.eq("word", word)).first();
+
+            if (existingDoc != null) {
+                // Word already exists, update its document
+                List<Document> docs = (List<Document>) existingDoc.get("docs");
+
+                for (Map.Entry<String, Double> docEntry : documentScores.entrySet()) {
+                    String docName = docEntry.getKey();
+                    double score = docEntry.getValue();
+
+                    Document doc = new Document("url", docName)
+                            .append("score", score);
+
+                    // Append the doc to the "docs" list
+                    docs.add(doc);
+                }
+
+                // Update the existing document in the collection
+                UpdateResult updateResult = indexerCollection.updateOne(
+                        Filters.eq("word", word),
+                        Updates.addToSet("docs", new Document("$each", docs))
+                );
+
+                if (updateResult.getModifiedCount() == 0) {
+                    // If the update did not modify any document, it may have exceeded the BSON document size limit
+                    // In this case, we can replace the existing document with the updated one
+                    indexerCollection.findOneAndReplace(
+                            Filters.eq("word", word),
+                            existingDoc.append("docs", docs)
+                    );
+                }
+            } else {
+                // Word does not exist, insert a new document
+                List<Document> docs = new ArrayList<>();
+
+                for (Map.Entry<String, Double> docEntry : documentScores.entrySet()) {
+                    String docName = docEntry.getKey();
+                    double score = docEntry.getValue();
+
+                    Document doc = new Document("url", docName)
+                            .append("score", score);
+
+                    // Append the doc to the "docs" list
+                    docs.add(doc);
+                }
+
+                // Create the word document
+                Document wordDoc = new Document("word", word)
+                        .append("docs", docs);
+
+                // Insert the word document into the collection
+                indexerCollection.insertOne(wordDoc);
+            }
+        }
+
+        System.out.println("Upload to MongoDB completed.");
+    }
+
 
 }

@@ -20,10 +20,13 @@ public class Indexer implements Runnable {
 
     private int startIndex;
     private int endIndex;
+    static MongoDB mongoDBClient = new MongoDB();
+
 
     public Indexer(int startIndex, int endIndex) {
         this.startIndex = startIndex;
         this.endIndex = endIndex;
+        mongoDBClient.connectToDatabase();
     }
 
     public static void main(String[] args) throws IOException {
@@ -85,10 +88,11 @@ public class Indexer implements Runnable {
         }
     }
      private static void parseHTML(String htmlContent, String fileName) {
-        Document doc = Jsoup.parse(htmlContent);
+        Document docc = Jsoup.parse(htmlContent);
         Map<String, Map<String, Double>> invertedIndex = new HashMap<>();
-        scoreWords(doc.body(), invertedIndex, 1.0, fileName);
+        scoreWords(docc.body(), invertedIndex, 1.0, fileName);
         printInvertedIndex(invertedIndex);
+        uploadToDB(invertedIndex);
     }
 
     private static void scoreWords(Element element, Map<String, Map<String, Double>> invertedIndex, double currentScore, String docName) {
@@ -143,6 +147,12 @@ public class Indexer implements Runnable {
             }
         }
     }
+
+    public static void uploadToDB(Map<String, Map<String, Double>> invertedIndex) {
+        mongoDBClient.uploadIndexer(invertedIndex);
+        System.out.println("Upload to MongoDB completed.");
+    }
+
 
 }
 

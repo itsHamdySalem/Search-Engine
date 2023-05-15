@@ -11,7 +11,7 @@ crawler: build-crawler run-crawler
 
 # Indexer module
 build-indexer:
-	javac -cp ./src/jsoup-1.16.1.jar;./src/mongo-java-driver-3.12.10.jar ./src/Indexer.java
+	javac -cp ./src/jsoup-1.16.1.jar;./src/mongo-java-driver-3.12.10.jar ./src/MongoDB.java ./src/Indexer.java
 
 run-indexer:
 	java -cp "./src/jsoup-1.16.1.jar;./src/mongo-java-driver-3.12.10.jar;./src" Indexer
