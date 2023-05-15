@@ -5,37 +5,24 @@ import java.util.HashSet;
 
 public class QueryProcessor {
 
-    String query;
-    String[] phrases;
-    
-    Set<String> stopWordsSet;
-    Set<Character> punctuationsSet;
-    
-    PhraseSearcher phraseSearcher = new PhraseSearcher();
-    
     static final String[] stopWords = {"a", "an", "the", "is", "are", "am", "was", "were", "has", "have", "had", "been", "will", "shall", "be", "do", "does", "did", "can", "could", "may", "might", "must", "should", "of", "in", "on", "at", "to", "from", "by", "for", "about", "with", "without", "not", "no", "yes", "or", "and", "but", "if", "else", "then", "than", "else", "when", "where", "what", "who", "how", "which", "whom", "whose", "why", "because", "however", "therefore", "thus", "so", "such", "this", "that", "these", "those", "their", "his", "her", "its", "our", "your", "their", "any", "some", "many", "much", "few", "little", "own", "other", "another", "each", "every", "all", "both", "neither", "either", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth"};
     static final Character[] punctuations = {'.', ',', ':', ';', '?', '!', '\'', '\"', '(', ')', '{', '}', '[', ']', '<', '>', '/', '\\', '|', '-', '_', '+', '=', '*', '&', '^', '%', '$', '#', '@', '`', '~', '“', '”', '‘', '’', '–', '—', '…'};
 
+    String query;
+    String[] phrases;
+    
+    static final Set<String> stopWordsSet = new HashSet<>(Arrays.asList(stopWords));
+    static final Set<Character> punctuationsSet = new HashSet<>(Arrays.asList(punctuations));
+    
+    PhraseSearcher phraseSearcher = new PhraseSearcher();
+
     public static void main (String[] args) {
-        QueryProcessor queryProcessor = new QueryProcessor();
-        // Test cases
-        queryProcessor.ProcessQuery("This is a test query.");
-        System.out.println();
-        queryProcessor.ProcessQuery("\"Search for this phrase.\"");
-        System.out.println();
-        queryProcessor.ProcessQuery("\"Java programming\" AND \"web development\"");
-        System.out.println();
-        queryProcessor.ProcessQuery("I want to search for a book on Java programming!");
-        System.out.println();
-        queryProcessor.ProcessQuery("\"Search for this phrase.\" and \"Search for this phrase.\"");
-        System.out.println();
-        queryProcessor.ProcessQuery("\"OpenAI's language model, GPT-3, is a game-changer!\"");
+        // temporary main function to test
+        // QueryProcessor queryProcessor = new QueryProcessor();
     }
 
     QueryProcessor() {
-        stopWordsSet = new HashSet<>(Arrays.asList(stopWords));
-        punctuationsSet = new HashSet<>(Arrays.asList(punctuations));
-        System.out.println("QueryProcessor initialized...");
+        // Empty constructor
     }
 
     public void ProcessQuery(String query) {
@@ -48,6 +35,7 @@ public class QueryProcessor {
             }
         }
         // TODO: process query and phrases
+        // just call phraseSearcher.ProcessPhrase(phrase) for each phrase and process query normally
     }
 
     private String PreProcessQuery (String query) {
@@ -110,7 +98,7 @@ public class QueryProcessor {
     private class PhraseSearcher {
 
         PhraseSearcher() {
-            System.out.println("PhraseSearcher initialized...");
+            // Empty constructor
         }
 
         public Boolean HasPhrases (String query) {
@@ -140,3 +128,5 @@ public class QueryProcessor {
     }
 
 }
+
+
