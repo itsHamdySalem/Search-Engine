@@ -27,7 +27,16 @@ run-mongodb:
 
 mongodb: build-mongodb run-mongodb
 
+# QueryProcessor module
+build-queryprocessor:
+	javac -cp ./src/snowball-stemmer-1.3.0.581.1.jar ./src/QueryProcessor.java
+
+run-queryprocessor:
+	java -p "./src/snowball-stemmer-1.3.0.581.1.jar;./src" QueryProcessor
+
+query-processor: build-queryprocessor run-queryprocessor
+
 clean:
 	rm -rf *.class
 
-all: crawler indexer mongodb
+all: crawler indexer mongodb queryprocessor
