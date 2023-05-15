@@ -2,7 +2,7 @@
 
 # Crawler module
 build-crawler:
-	javac -cp ./src/jsoup-1.16.1.jar;./src/mongo-java-driver-3.12.10.jar ./src/Crawler.java ./src/TestCrawler.java ./src/MongoDB.java ./src/RobotObject.java
+	javac -cp ./src/jsoup-1.16.1.jar;./src/mongo-java-driver-3.12.10.jar ./src/Crawler.java ./src/TestCrawler.java ./src/MongoDB.java
 
 run-crawler:
 	java -cp "./src/jsoup-1.16.1.jar;./src/mongo-java-driver-3.12.10.jar;./src" TestCrawler
@@ -11,12 +11,13 @@ crawler: build-crawler run-crawler
 
 # Indexer module
 build-indexer:
-	javac -cp ./src/jsoup-1.16.1.jar;./src/mongo-java-driver-3.12.10.jar ./src/MongoDB.java ./src/Indexer.java
+	javac ./Indexer.java
 
 run-indexer:
-	java -cp "./src/jsoup-1.16.1.jar;./src/mongo-java-driver-3.12.10.jar;./src" Indexer
+	java ./Indexer.class
 
-indexer: build-indexer run-indexer
+indexer:
+	build-indexer run-indexer
 
 # MongoDB module
 build-mongodb:
@@ -27,16 +28,7 @@ run-mongodb:
 
 mongodb: build-mongodb run-mongodb
 
-# QueryProcessor module
-build-queryprocessor:
-	javac -cp ./src/snowball-stemmer-1.3.0.581.1.jar ./src/QueryProcessor.java
-
-run-queryprocessor:
-	java -p "./src/snowball-stemmer-1.3.0.581.1.jar;./src" QueryProcessor
-
-query-processor: build-queryprocessor run-queryprocessor
-
 clean:
 	rm -rf *.class
 
-all: crawler indexer mongodb queryprocessor
+all: crawler indexer mongodb
