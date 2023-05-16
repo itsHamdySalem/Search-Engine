@@ -7,7 +7,9 @@ const SearchEngine = () => {
     const [searchTime, setSearchTime] = useState('');
 
     const performSearch = (query) => {
-        currentTime = new Date().toLocaleTimeString();
+        if (!query) return;
+        
+        const currentTime = new Date().toLocaleTimeString();
         // TODO: Perform search engine request
         
         const mockResults = [
@@ -24,7 +26,7 @@ const SearchEngine = () => {
         ];
 
         setResults(mockResults);
-        setSearchTime(new Date().toLocaleTimeString() - currentTime);
+        setSearchTime(new Date().getTime() - currentTime);
     };
 
     return (
