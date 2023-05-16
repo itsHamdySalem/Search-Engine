@@ -48,3 +48,12 @@ code {
 .result-snippet {
   font-size: 14px;
 }
+
+.pagination {
+  margin-top: 20px;
+}
+
+.active {
+  font-weight: bold;
+}
+
