@@ -107,10 +107,10 @@ public class MongoDB {
         crawlerCollection.insertOne(newUrl);
     }
 
-    public void uploadIndexer(Map<String, Map<String, Double>> invertedIndex) {
-        for (Map.Entry<String, Map<String, Double>> entry : invertedIndex.entrySet()) {
+    public void uploadIndexer(Map<String, Map<String, word_par>> invertedIndex) {
+        for (Map.Entry<String, Map<String, word_par>> entry : invertedIndex.entrySet()) {
             String word = entry.getKey();
-            Map<String, Double> documentScores = entry.getValue();
+            Map<String, word_par> documentScores = entry.getValue();
 
             // Check if the word already exists in the collection
             Document existingDoc = indexerCollection.find(Filters.eq("word", word)).first();
@@ -119,9 +119,9 @@ public class MongoDB {
                 // Word already exists, update its document
                 List<Document> docs = (List<Document>) existingDoc.get("docs");
 
-                for (Map.Entry<String, Double> docEntry : documentScores.entrySet()) {
+                for (Map.Entry<String, word_par> docEntry : documentScores.entrySet()) {
                     String docName = docEntry.getKey();
-                    double score = docEntry.getValue();
+                    double score = docEntry.getValue().score;
 
                     Document doc = new Document("url", docName)
                             .append("score", score);
@@ -148,9 +148,9 @@ public class MongoDB {
                 // Word does not exist, insert a new document
                 List<Document> docs = new ArrayList<>();
 
-                for (Map.Entry<String, Double> docEntry : documentScores.entrySet()) {
+                for (Map.Entry<String, word_par> docEntry : documentScores.entrySet()) {
                     String docName = docEntry.getKey();
-                    double score = docEntry.getValue();
+                    double score = docEntry.getValue().score;
 
                     Document doc = new Document("url", docName)
                             .append("score", score);

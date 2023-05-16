@@ -14,8 +14,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.ArrayList;
 import java.util.List;
-import org.tartarus.snowball.ext.PorterStemmer;
-
+//import org.tartarus.snowball.ext.PorterStemmer;
+//To Do: handle the syncronization to run multiple threads
 public class Indexer implements Runnable {
     String[] stopWords = {"a", "an", "the", "is", "are", "am", "was", "were", "has", "have", "had", "been", "will", "shall", "be", "do", "does", "did", "can", "could", "may", "might", "must", "should", "of", "in", "on", "at", "to", "from", "by", "for", "about", "with", "without", "not", "no", "yes", "or", "and", "but", "if", "else", "then", "than", "else", "when", "where", "what", "who", "how", "which", "whom", "whose", "why", "because", "however", "therefore", "thus", "so", "such", "this", "that", "these", "those", "their", "his", "her", "its", "our", "your", "their", "any", "some", "many", "much", "few", "little", "own", "other", "another", "each", "every", "all", "both", "neither", "either", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth"};
     String[] punctuations = {".", ",", ":", ";", "?", "!", "'", "\"", "(", ")", "{", "}", "[", "]", "<", ">", "/", "\\", "|", "-", "_", "+", "=", "*", "&", "^", "%", "$", "#", "@", "`", "~", "“", "”", "‘", "’", "–", "—", "…"};
@@ -119,11 +119,22 @@ public class Indexer implements Runnable {
             for (String word : words) {
 
                 //stemming ,phrase,tolower
-                invertedIndex.computeIfAbsent(word, k -> new HashMap<>()). merge(docName, score, Double::sum);
+                processWord(word);
+                word_par w = null;
+                w.score=score;
+                w.size=1;
+                w.TF=1;
+                //not sure
+                invertedIndex.computeIfAbsent(word, k -> new HashMap<>()).merge(docName, w, word_par::sum);
             }
         }
     }
-
+        private static String processWord(String word) {
+        String res=word.toLowerCase();
+//        res=stem(res);
+//        res=
+        return res;
+        }
     private static double getElementScore(Element element) {
         String tagName = element.tagName();
         double score = 1.0; // Default score
@@ -158,7 +169,7 @@ public class Indexer implements Runnable {
         }
     }
 
-    public static void uploadToDB(Map<String, Map<String, Double>> invertedIndex) {
+    public static void uploadToDB(Map<String, Map<String, word_par>> invertedIndex) {
         mongoDBClient.uploadIndexer(invertedIndex);
         System.out.println("Upload to MongoDB completed.");
     }
@@ -203,17 +214,17 @@ public class Indexer implements Runnable {
         return result;
     }
 
-    private String stem(String query) {
-        PorterStemmer stemmer = new PorterStemmer();
-        String[] words = query.split(" ");
-        String result = "";
-        for (String word : words) {
-            stemmer.add(word.toCharArray(), word.length());
-            stemmer.stem();
-            result += stemmer.toString() + " ";
-        }
-        return result;
-    }
+//    private static String stem(String query) {
+//        PorterStemmer stemmer = new PorterStemmer();
+//        String[] words = query.split(" ");
+//        String result = "";
+//        for (String word : words) {
+//            stemmer.add(word.toCharArray(), word.length());
+//            stemmer.stem();
+//            result += stemmer.toString() + " ";
+//        }
+//        return result;
+//    }
     private static void calculateTF_IDF(Map<String, Map<String, word_par>> invertedIndex){
         //Tf*IDF
         //tf: term frequency
@@ -235,7 +246,7 @@ public class Indexer implements Runnable {
     }
 
 
-    private class PhraseSearcher {
+     class PhraseSearcher {
         String[] phrases;
 
         PhraseSearcher() {
@@ -261,10 +272,8 @@ public class Indexer implements Runnable {
             return query;
         }
 
-    }
 
-
-    public void ProcessPharse (String phrase) {
+    public void wordPharse (String phrase) {
         // TODO: process phrase
     }
 

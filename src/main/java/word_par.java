@@ -29,4 +29,11 @@ public class word_par {
         this.size = size;
         this.score = score;
     }
+
+    public word_par sum(word_par w) {
+        this.size=w.size;
+        this.score=w.score;
+        this.TF=w.TF;
+        return this;
+    }
 }
