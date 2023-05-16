@@ -2,6 +2,8 @@
 import java.util.Set;
 import java.util.Arrays;
 import java.util.HashSet;
+import org.tartarus.snowball.ext.PorterStemmer;
+
 
 public class QueryProcessor {
 
@@ -16,18 +18,14 @@ public class QueryProcessor {
     
     PhraseSearcher phraseSearcher = new PhraseSearcher();
 
-    public static void main (String[] args) {
-        // temporary main function to test
-        // QueryProcessor queryProcessor = new QueryProcessor();
+    QueryProcessor(){
+        
     }
 
-    QueryProcessor() {
-        // Empty constructor
-    }
 
-    public void ProcessQuery(String query) {
-        query = PreProcessQuery(query);
-        System.out.println("Query after preprocessing: " + query);
+    public String ProcessQuery(String query) {
+        return PreProcessQuery(query);
+/*        System.out.println("Query after preprocessing: " + query);
         if (phrases != null) {
             System.out.println("Phrases:");
             for (String phrase : phrases) {
@@ -36,6 +34,7 @@ public class QueryProcessor {
         }
         // TODO: process query and phrases
         // just call phraseSearcher.ProcessPhrase(phrase) for each phrase and process query normally
+*/
     }
 
     private String PreProcessQuery (String query) {
@@ -46,7 +45,7 @@ public class QueryProcessor {
         query = query.toLowerCase();
         query = removeStopWords(query);
         query = removePunctuation(query);
-        // query = stem(query);
+        query = stem(query);
         return query;
     }
 
@@ -66,34 +65,23 @@ public class QueryProcessor {
         String[] words = query.split(" ");
         StringBuilder result = new StringBuilder();
         for (String word : words) {
-            if (word.length() == 0) {
-                continue;
+            StringBuilder wordBuilder = new StringBuilder();
+            for (int i = 0; i < word.length(); i++) {
+                if (!punctuationsSet.contains(word.charAt(i))) {
+                    wordBuilder.append(word.charAt(i));
+                }
             }
-            if (word.length() == 1 && punctuationsSet.contains(word.charAt(0))) {
-                continue;
-            }
-            if (punctuationsSet.contains(word.charAt(word.length() - 1))) {
-                word = word.substring(0, word.length() - 1);
-            }
-            if (punctuationsSet.contains(word.charAt(0))) {
-                word = word.substring(1);
-            }
+            word = wordBuilder.toString();
             result.append(word).append(" ");
         }
         return result.toString().trim();
     }
-
-    // private String stem (String query) {
-    //     PorterStemmer stemmer = new PorterStemmer();
-    //     String[] words = query.split(" ");
-    //     StringBuilder result = new StringBuilder();
-    //     for (String word : words) {
-    //         stemmer.setCurrent(word);
-    //         stemmer.stem();
-    //         result.append(stemmer.getCurrent()).append(" ");
-    //     }
-    //     return result.toString().trim();
-    // }
+    public static String stem(String word){
+        PorterStemmer porterStemmer = new PorterStemmer();
+        porterStemmer.setCurrent(word);
+        porterStemmer.stem();
+        return porterStemmer.getCurrent();
+    }
 
     private class PhraseSearcher {
 

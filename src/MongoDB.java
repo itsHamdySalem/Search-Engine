@@ -30,6 +30,7 @@ import java.util.ArrayList;
 
 public class MongoDB {
     private MongoCollection<Document> crawlerCollection;
+    private MongoCollection<Document> linksCollection;
     private MongoCollection<Document> indexerCollection;
 
     public void connectToDatabase() {
@@ -38,6 +39,7 @@ public class MongoDB {
             MongoDatabase db = mongoClient.getDatabase("SearchEngine");
             crawlerCollection = db.getCollection("crawler");
             indexerCollection = db.getCollection("indexer");
+            linksCollection = db.getCollection("links");
 
             System.out.println("Connected to the database");
 
@@ -74,7 +76,7 @@ public class MongoDB {
     }
 
     public void getPagesVisited (Queue<String> pagesToVisit, Set<String> pagesVisited) {
-        List<Document> pagesList = crawlerCollection.find().into(new ArrayList<Document>());
+        List<Document> pagesList = linksCollection.find().into(new ArrayList<Document>());
         for (Document url: pagesList) {
             if (url.get("_id").toString().equals("1.0")) {
                 continue;
@@ -88,22 +90,15 @@ public class MongoDB {
         Bson filter = eq("toVisit", url);
         if (toInsert) {
             Document newUrl = new Document("toVisit", url);
-            crawlerCollection.insertOne(newUrl);
+            linksCollection.insertOne(newUrl);
         } else {
-            crawlerCollection.deleteOne(filter);
-        }
-    }
-
-    public void updatePagesToVisit (List<String> urls) {
-        for (String url: urls) {
-            Document newUrl = new Document("toVisit", url);
-            crawlerCollection.insertOne(newUrl);
+            linksCollection.deleteOne(filter);
         }
     }
 
     public void updatePagesVisited (String url) {
         Document newUrl = new Document("visited", url);
-        crawlerCollection.insertOne(newUrl);
+        linksCollection.insertOne(newUrl);
     }
 
     public void uploadIndexer(Map<String, Map<String, Double>> invertedIndex) {
@@ -168,6 +163,12 @@ public class MongoDB {
         }
 
         System.out.println("Upload to MongoDB completed.");
+    }
+    
+    public boolean isPageVisited(String url) {
+        Document query = new Document("visited", url);
+        long count = linksCollection.countDocuments(query);
+        return count > 0;
     }
 
 
