@@ -21,6 +21,7 @@ public class Indexer implements Runnable {
     private int startIndex;
     private int endIndex;
     static MongoDB mongoDBClient = new MongoDB();
+    static QueryProcessor qp = new QueryProcessor();
 
 
     public Indexer(int startIndex, int endIndex) {
@@ -68,6 +69,7 @@ public class Indexer implements Runnable {
                     if (file.isFile()) {
                         collectDocument(file);
                     }
+                    file.delete();
                 }
             }
         }
@@ -109,6 +111,7 @@ public class Indexer implements Runnable {
             double score = currentScore * getElementScore(element);
             String[] words = text.split("\\s+");
             for (String word : words) {
+                word = qp.ProcessQuery(word);
                 invertedIndex.computeIfAbsent(word, k -> new HashMap<>()).merge(docName, score, Double::sum);
             }
         }
@@ -116,20 +119,45 @@ public class Indexer implements Runnable {
 
     private static double getElementScore(Element element) {
         String tagName = element.tagName();
-        double score = 1.0; // Default score
+        double score = 0;
 
         if (tagName.equals("title")) {
-            score = 1.0; // Assign a score of 1.0 to title elements
+            score = 1.0;
         } else if (tagName.equals("h1")) {
-            score = 0.9; // Assign a score of 0.9 to h1 elements
+            score = 0.9;
         } else if (tagName.equals("h2")) {
-            score = 0.8; // Assign a score of 0.8 to h2 elements
+            score = 0.8;
+        } else if (tagName.equals("h3")) {
+            score = 0.7;
+        } else if (tagName.equals("h4")) {
+            score = 0.6;
+        } else if (tagName.equals("h5")) {
+            score = 0.5;
+        } else if (tagName.equals("h6")) {
+            score = 0.4;
         } else if (tagName.equals("p")) {
-            score = 0.3; // Assign a score of 0.3 to p elements
-        } else {
-            score = 1.0; // Assign a score of 1.0 to div elements
+            score = 0.3;
+        } else if (tagName.equals("a")) {
+            score = 0.5;
+        } else if (tagName.equals("ul") || tagName.equals("ol")) {
+            score = 1.0;
+        } else if (tagName.equals("li")) {
+            score = 0.3;
+        } else if (tagName.equals("div")) {
+            score = 1.0;
+        } else if (tagName.equals("span")) {
+            score = 0.3;
+        } else if (tagName.equals("br")) {
+            score = 1.0;
+        } else if (tagName.equals("table") || tagName.equals("tr") || tagName.equals("td")) {
+            score = 1.0;
+        } else if (tagName.equals("form")) {
+            score = 1.0;
+        } else if (tagName.equals("input") || tagName.equals("button")) {
+            score = 0.3;
+        } else if (tagName.equals("header") || tagName.equals("footer") || tagName.equals("nav") || tagName.equals("main") || tagName.equals("section")) {
+            score = 1.0;
         }
-        // Add more conditions to assign scores based on other element types
 
         return score;
     }

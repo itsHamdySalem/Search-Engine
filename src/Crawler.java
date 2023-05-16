@@ -22,7 +22,7 @@ import java.util.concurrent.ConcurrentSkipListSet;
 
 public class Crawler implements Runnable {
 
-    private final int MAX_WEB_PAGES = 100;
+    private final int MAX_WEB_PAGES = 5;
 
     private Set<String> pagesVisited = new ConcurrentSkipListSet<>();
     private Queue<String> pagesToVisit = new ConcurrentLinkedQueue<>();
@@ -51,7 +51,7 @@ public class Crawler implements Runnable {
             String url;
             synchronized (pagesToVisitLock) {
                 url = pagesToVisit.poll();
-                mongoDBClient.updatePagesToVisit(url, false);
+                // mongoDBClient.updatePagesToVisit(url, false);
             }
 
             try {
@@ -72,6 +72,11 @@ public class Crawler implements Runnable {
                 // Normalize the URL
                 URI uri = new URI(url);
                 String normalizedUrl = uri.normalize().toString();
+                
+                if(mongoDBClient.isPageVisited(normalizedUrl)) {
+                    System.out.println(normalizedUrl + " is already visited");
+                    continue;
+                }
 
                 // Connect to the URL
                 Connection con = Jsoup.connect(normalizedUrl);
@@ -90,6 +95,7 @@ public class Crawler implements Runnable {
                         }
 
                         pagesVisited.add(normalizedUrl);
+                        System.out.println("Visited " + normalizedUrl);
                         mongoDBClient.updatePagesVisited(normalizedUrl);
 
                         synchronized (getContentLock) {
@@ -121,7 +127,7 @@ public class Crawler implements Runnable {
 
                                 synchronized (pagesToVisitLock) {
                                     pagesToVisit.add(normalizedNextUrl);
-                                    mongoDBClient.updatePagesToVisit(normalizedNextUrl, true);
+                                    // mongoDBClient.updatePagesToVisit(normalizedNextUrl, true);
                                 }
                             }
                         } catch (URISyntaxException e) {
@@ -191,7 +197,7 @@ public class Crawler implements Runnable {
     }
 
     private void getPageContent(Document doc, String url) {
-        final String path = "E:/CUFE/2- Junior CMP/Second Term/CMP 2050/Project/sandbox/downloadedPages/";
+        final String path = "downloadedPages/";
         
         String fileName = url.substring(0, url.length());
         fileName = fileName.replaceAll("[^a-zA-Z0-9\\.\\-]", "_");
