@@ -13,6 +13,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 
 import java.util.Set;
+import java.util.HashMap;
 import java.util.Queue;
 import java.util.Scanner;
 import java.util.concurrent.Executors;
@@ -30,6 +31,9 @@ public class Crawler implements Runnable {
     private Object getContentLock = new Object();
     private Object pagesVisitedLock = new Object();
     private Object pagesToVisitLock = new Object();
+    private Object pagesPopularityLock = new Object();
+
+    private HashMap<String, Integer> PagesPopularity = new HashMap<>();
     
     MongoDB mongoDBClient = new MongoDB();
     RobotObject robotObject = new RobotObject();
@@ -51,7 +55,7 @@ public class Crawler implements Runnable {
             String url;
             synchronized (pagesToVisitLock) {
                 url = pagesToVisit.poll();
-                // mongoDBClient.updatePagesToVisit(url, false);
+                mongoDBClient.updatePagesToVisit(url, false);
             }
 
             try {
@@ -125,9 +129,17 @@ public class Crawler implements Runnable {
                                     continue;
                                 }
 
+                                synchronized (pagesPopularityLock) {
+                                    if (PagesPopularity.containsKey(normalizedNextUrl)) {
+                                        PagesPopularity.put(normalizedNextUrl, PagesPopularity.get(normalizedNextUrl) + 1);
+                                    } else {
+                                        PagesPopularity.put(normalizedNextUrl, 1);
+                                    }
+                                }
+
                                 synchronized (pagesToVisitLock) {
                                     pagesToVisit.add(normalizedNextUrl);
-                                    // mongoDBClient.updatePagesToVisit(normalizedNextUrl, true);
+                                    mongoDBClient.updatePagesToVisit(normalizedNextUrl, true);
                                 }
                             }
                         } catch (URISyntaxException e) {
@@ -175,6 +187,7 @@ public class Crawler implements Runnable {
         }
 
         mongoDBClient.setState("idle");
+        mongoDBClient.InsertPagePopularity(PagesPopularity, pagesVisited);
 
         System.out.println("Overall pages visited = " + pagesVisited.size());
         System.out.println("Crawling finished..");
