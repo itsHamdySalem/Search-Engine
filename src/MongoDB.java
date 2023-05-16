@@ -40,11 +40,7 @@ public class MongoDB {
             MongoDatabase db = mongoClient.getDatabase("SearchEngine");
             crawlerCollection = db.getCollection("crawler");
             indexerCollection = db.getCollection("indexer");
-<<<<<<< HEAD
             pagePopularityCollection = db.getCollection("pagePopularity");
-=======
-            linksCollection = db.getCollection("links");
->>>>>>> a20449365fe857951f48bc79a6aec733b3cf52c8
 
             System.out.println("Connected to the database");
 
