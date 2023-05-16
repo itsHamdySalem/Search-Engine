@@ -31,6 +31,7 @@ import java.util.ArrayList;
 public class MongoDB {
     private MongoCollection<Document> crawlerCollection;
     private MongoCollection<Document> indexerCollection;
+    private MongoCollection<Document> pagePopularityCollection;
 
     public void connectToDatabase() {
         try {
@@ -38,6 +39,7 @@ public class MongoDB {
             MongoDatabase db = mongoClient.getDatabase("SearchEngine");
             crawlerCollection = db.getCollection("crawler");
             indexerCollection = db.getCollection("indexer");
+            pagePopularityCollection = db.getCollection("pagePopularity");
 
             System.out.println("Connected to the database");
 
@@ -170,5 +172,33 @@ public class MongoDB {
         System.out.println("Upload to MongoDB completed.");
     }
 
+    public void ConnectWithPagePopularity () {
+        try {
+            MongoClient mongoClient = new MongoClient();
+            MongoDatabase db = mongoClient.getDatabase("SearchEngine");
+            pagePopularityCollection = db.getCollection("pagePopularity");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void InsertPagePopularity (HashMap<String, Integer> PagesPopularity, Set<String> VisitedPages) {
+        for (String page: PagesPopularity.keySet()) {
+            if (VisitedPages.contains(page)) {
+                Document newPage = new Document("page", page)
+                        .append("popularity", PagesPopularity.get(page));
+                pagePopularityCollection.insertOne(newPage);
+            }
+        }
+    }
+
+    public HashMap<String, Integer> getPagesPopularity () {
+        Set<Document> PagesPopularity = pagePopularityCollection.find().into(new HashSet<Document>());
+        HashMap<String, Integer> PagesPopularityMap = new HashMap<String, int>();
+        for (Document page: PagesPopularity) {
+            PagesPopularityMap.put(page.get("page").toString(), page.get("popularity"));
+        }
+        return PagesPopularityMap;
+    }
 
 }

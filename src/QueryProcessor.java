@@ -66,18 +66,13 @@ public class QueryProcessor {
         String[] words = query.split(" ");
         StringBuilder result = new StringBuilder();
         for (String word : words) {
-            if (word.length() == 0) {
-                continue;
+            StringBuilder wordBuilder = new StringBuilder();
+            for (int i = 0; i < word.length(); i++) {
+                if (!punctuationsSet.contains(word.charAt(i))) {
+                    wordBuilder.append(word.charAt(i));
+                }
             }
-            if (word.length() == 1 && punctuationsSet.contains(word.charAt(0))) {
-                continue;
-            }
-            if (punctuationsSet.contains(word.charAt(word.length() - 1))) {
-                word = word.substring(0, word.length() - 1);
-            }
-            if (punctuationsSet.contains(word.charAt(0))) {
-                word = word.substring(1);
-            }
+            word = wordBuilder.toString();
             result.append(word).append(" ");
         }
         return result.toString().trim();
